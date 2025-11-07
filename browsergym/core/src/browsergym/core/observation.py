@@ -38,11 +38,8 @@ def is_ad_or_tracking_frame(url):
         "pixel.","beacon.","sync","usync","usersync","identity","match","doubleclick",
         "googlesyndication","amazon-adsystem","pubmatic","rubicon","criteo","adsystem",
         "cdn.","static.","assets.","js.","scripts."
-    )):
-        return True
-    if any(p in url for p in (
         "callback=","redirect=","rurl=","gdpr=","consent=","partnerid=","pid=",
-        "apnxid=","uid=","id=","pixel=","track=","sync=","match="
+        "apnxid=","uid=","pixel=","track=","sync=","match="
     )):
         return True
     return len(url) < 50 and any(x in url for x in ("sync","track","pixel","beacon"))
