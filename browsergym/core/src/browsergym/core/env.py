@@ -624,22 +624,25 @@ document.addEventListener("visibilitychange", () => {
         if self.visual_agent:
             print('visual agent flag is set to true, not extracting dom -- env.py')
             obs = {
-                "page": self.page,
                 "chat_messages": tuple(copy.deepcopy(self.chat.messages)),
                 "goal": _try_to_extract_legacy_goal(self.goal_object),  # legacy goal, deprecated
                 "goal_object": tuple(
                     copy.deepcopy(self.goal_object)
                 ),  # new goal format, list of messages openai style
-                "screenshot": extract_screenshot(self.page),
                 "open_pages_urls": tuple(page.url for page in self.context.pages),
                 "open_pages_titles": tuple(page.title() for page in self.context.pages),
                 "active_page_index": np.asarray([self.context.pages.index(self.page)]),
                 "url": self.page.url,  # redundant with "open_pages_urls" and "active_page_index"
+                "screenshot": extract_screenshot(self.page),
+                "dom_object": {},  # placeholder - not extracted for visual agents
+                "axtree_object": {},  # placeholder - not extracted for visual agents
+                "extra_element_properties": {},  # placeholder - not extracted for visual agents
+                "focused_element_bid": "",  # placeholder - not extracted for visual agents
                 "last_action": self.last_action,
                 "last_action_error": self.last_action_error,
                 "elapsed_time": np.asarray([time.time() - self.start_time]),
             }
-            return obs
+            return obs            
         '''
         finish
         '''
