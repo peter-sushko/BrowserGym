@@ -622,7 +622,7 @@ document.addEventListener("visibilitychange", () => {
         manually add visual agent here
         '''
         if self.visual_agent:
-            print('visual agent flag is set to true, not extracting dom -- env.py')
+            # print('visual agent flag is set to true, not extracting dom -- env.py')
             obs = {
                 "chat_messages": tuple(copy.deepcopy(self.chat.messages)),
                 "goal": _try_to_extract_legacy_goal(self.goal_object),  # legacy goal, deprecated
