@@ -23,6 +23,27 @@ class MarkingError(Exception):
     pass
 
 
+def is_ad_or_tracking_frame(url):
+    """Detect ad/tracking or problematic frames"""
+    if not url or url in ["about:blank", "about:srcdoc"]:
+        return True
+    url = url.lower()
+    if url.startswith(("chrome-error://","chrome://","chrome-extension://","devtools://",
+                       "edge://","data:","blob:","file://")) or "chromewebdata" in url:
+        return True
+    if "captcha" in url or "recaptcha" in url:
+        return True
+    if any(p in url for p in (
+        "ads.","ad.","advertising.","adn.","adserver.","analytics.","tracking.","track.",
+        "pixel.","beacon.","sync","usync","usersync","identity","match","doubleclick",
+        "googlesyndication","amazon-adsystem","pubmatic","rubicon","criteo","adsystem",
+        "cdn.","static.","assets.","js.","scripts."
+        "callback=","redirect=","rurl=","gdpr=","consent=","partnerid=","pid=",
+        "apnxid=","uid=","pixel=","track=","sync=","match="
+    )):
+        return True
+    return len(url) < 50 and any(x in url for x in ("sync","track","pixel","beacon"))
+
 def _pre_extract(
     page: playwright.sync_api.Page,
     tags_to_mark: Literal["all", "standard_html"] = "standard_html",
@@ -41,6 +62,10 @@ def _pre_extract(
         assert frame_bid == "" or re.match(r"^[a-z][a-zA-Z]*$", frame_bid)
         logger.debug(f"Marking frame {repr(frame_bid)}")
 
+        # Skip ad/tracking frames that commonly cause timeouts
+        if is_ad_or_tracking_frame(frame.url):
+            logger.debug(f"Skipping frame marking for ad/tracking frame {frame_bid} with URL: {frame.url}")
+            return
         # mark all DOM elements in the frame (it will use the parent frame element's bid as a prefix)
         warning_msgs = frame.evaluate(
             js_frame_mark_elements,
@@ -87,6 +112,9 @@ def _post_extract(page: playwright.sync_api.Page):
     # we can't run this loop in JS due to Same-Origin Policy
     # (can't access the content of an iframe from a another one)
     for frame in page.frames:
+        if is_ad_or_tracking_frame(frame.url):
+            logger.debug(f"Skipping unmarking for ad/tracking frame with URL: {frame.url}")
+            continue
         try:
             if not frame == page.main_frame:
                 # deal with weird frames (pdf viewer in <embed>)
