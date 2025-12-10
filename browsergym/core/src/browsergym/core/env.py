@@ -77,8 +77,8 @@ class BrowserEnv(gym.Env, ABC):
         # agent-related arguments
         action_mapping: Optional[callable] = HighLevelActionSet().to_python_code,
         use_raw_page_output: bool = False,
+        visual_agent: bool = False,
         pre_observation_delay: float = 0.5,  # seconds
-        include_axtree: bool = True,  # set to False to skip axtree extraction (saves time)
     ):
         """
         Instantiate a ready to use BrowserEnv gym environment.
@@ -101,7 +101,8 @@ class BrowserEnv(gym.Env, ABC):
             action_mapping: if set, the environment will use this function to map every received action to executable Python code.
             use_raw_page_output: if set, the environment will use the raw page output instead of the default processing.
             pre_observation_delay: float = 0.5, number of seconds to wait before starting to extract the observation. This can be important if there are some auto-complete menu that may appear after filling a field.
-            include_axtree: if False, skip accessibility tree extraction to save time. The axtree_object will be an empty dict. Useful for agents that don't need axtree (e.g., screenshot-based agents).
+            
+            visual_agent: ignore dom and axtree for multimodal agentss
         """
         super().__init__()
         self.task_entrypoint = task_entrypoint
@@ -121,8 +122,8 @@ class BrowserEnv(gym.Env, ABC):
         self.pw_context_kwargs = pw_context_kwargs
         self.action_mapping = action_mapping
         self.use_raw_page_output = use_raw_page_output
+        self.visual_agent = visual_agent
         self.pre_observation_delay = pre_observation_delay
-        self.include_axtree = include_axtree
 
         # check argument values
         assert tags_to_mark in ("all", "standard_html")
@@ -617,6 +618,31 @@ document.addEventListener("visibilitychange", () => {
             raise RuntimeError(f"Unexpected: active page has been closed ({self.page}).")
 
     def _get_obs(self):
+        '''
+        manually add visual agent here
+        '''
+        if self.visual_agent:
+            print('visual agent flag is set to true, not extracting dom -- env.py')
+            obs = {
+                "page": self.page,
+                "chat_messages": tuple(copy.deepcopy(self.chat.messages)),
+                "goal": _try_to_extract_legacy_goal(self.goal_object),  # legacy goal, deprecated
+                "goal_object": tuple(
+                    copy.deepcopy(self.goal_object)
+                ),  # new goal format, list of messages openai style
+                "screenshot": extract_screenshot(self.page),
+                "open_pages_urls": tuple(page.url for page in self.context.pages),
+                "open_pages_titles": tuple(page.title() for page in self.context.pages),
+                "active_page_index": np.asarray([self.context.pages.index(self.page)]),
+                "url": self.page.url,  # redundant with "open_pages_urls" and "active_page_index"
+                "last_action": self.last_action,
+                "last_action_error": self.last_action_error,
+                "elapsed_time": np.asarray([time.time() - self.start_time]),
+            }
+            return obs
+        '''
+        finish
+        '''
         if self.use_raw_page_output:
             obs = {
                 "page": self.page,
@@ -640,7 +666,7 @@ document.addEventListener("visibilitychange", () => {
                 _pre_extract(self.page, tags_to_mark=self.tags_to_mark, lenient=(retries_left == 0))
 
                 dom = extract_dom_snapshot(self.page)
-                axtree = extract_merged_axtree(self.page) if self.include_axtree else {}
+                axtree = extract_merged_axtree(self.page)
                 focused_element_bid = extract_focused_element_bid(self.page)
                 scale_factor = getattr(self.page, "_bgym_scale_factor", 1.0)
                 extra_properties = extract_dom_extra_properties(dom, scale_factor=scale_factor)
